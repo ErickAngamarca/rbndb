@@ -364,6 +364,14 @@ download_bndb <- function(scientific_name,
       }
       sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
       message("Saved to: ", out_file)
+    } else if (output == "csv") {
+      message("Saving as CSV (WGS84 coordinates)")
+      
+      if (!grepl("\\.csv$", out_file)) {
+        out_file <- paste0(out_file, ".csv")
+      }
+      write.csv(all_occurrences, out_file, row.names = FALSE)
+      message("Saved to: ", out_file)
     }
   }
 
