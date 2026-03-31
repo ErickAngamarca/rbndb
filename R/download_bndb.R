@@ -1,5 +1,6 @@
 #' Download occurrence data from BNDB Ecuador
 #'
+#' @aliases rbndb
 #' @param scientific_name Scientific name of the species
 #' @param max_pages Maximum number of pages to download (default 10)
 #' @param delay Delay between requests in seconds (default 0.5)

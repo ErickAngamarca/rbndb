@@ -6,7 +6,7 @@ Description: Download occurrence data from the Banco Nacional de Datos de
     Biodiversidad (BNDB) of Ecuador using web scraping.
 License: MIT
 Encoding: UTF-8
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.3
 Imports: 
     httr,
     rvest,
