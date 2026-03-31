@@ -1,0 +1,75 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "rbndb"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> library('rbndb')
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("download_bndb")
+> ### * download_bndb
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: download_bndb
+> ### Title: Download occurrence data from BNDB Ecuador
+> ### Aliases: download_bndb rbndb
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D # Download all records for a species (all Ecuador)
+> ##D occ <- download_bndb("Cedrela odorata")
+> ##D 
+> ##D # Download records filtered by a shapefile
+> ##D occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+> ##D 
+> ##D # Save as CSV
+> ##D download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
+> ##D               output = "csv", out_file = "data")
+> ##D 
+> ##D # Save as shapefile in UTM (crs required)
+> ##D download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
+> ##D               output = "shp", out_file = "data", crs = "EPSG:32717")
+> ##D 
+> ##D # Display interactive map (crs required)
+> ##D download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
+> ##D               map = TRUE, crs = "EPSG:4326")
+> ## End(Not run)
+> 
+> 
+> 
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  0.049 0.008 0.057 0 0 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')
