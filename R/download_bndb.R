@@ -77,7 +77,7 @@ download_bndb <- function(scientific_name,
     crs <- "EPSG:4326"
   }
 
-  message("Starting BNDB download for: ", scientific_name)
+  message("Iniciando descarga de BNDB para: ", scientific_name)
 
   all_occurrences <- data.frame()
 
@@ -93,11 +93,11 @@ download_bndb <- function(scientific_name,
       occ_ids <- rvest::html_attr(rvest::html_nodes(pg, 'input[name="occid[]"]'), 'value')
 
       if (length(occ_ids) == 0) {
-        message("No more records on page ", page)
+        message("No hay m\u00e1s registros en la p\u00e1gina ", page)
         break
       }
 
-      message("Page ", page, ": ", length(occ_ids), " records")
+      message("P\u00e1gina ", page, ": ", length(occ_ids), " registros")
 
       for (i in seq_along(occ_ids)) {
         occ_id <- occ_ids[i]
@@ -238,11 +238,11 @@ download_bndb <- function(scientific_name,
 
         }, error = function(e) { })
 
-        if (i %% 10 == 0) message("  Processed ", i, "/", length(occ_ids))
+        message("  Procesados ", i, "/", length(occ_ids))
       }
 
     }, error = function(e) {
-      message("Error on page ", page, ": ", e$message)
+      message("Error en la p\u00e1gina ", page, ": ", e$message)
       return(all_occurrences)
     })
   }
@@ -253,18 +253,18 @@ download_bndb <- function(scientific_name,
     ), ]
   }
 
-  message("Download complete. Total records with coordinates: ", nrow(all_occurrences))
+  message("Descarga completa. Total de registros con coordenadas: ", nrow(all_occurrences))
 
   if (nrow(all_occurrences) == 0) {
-    message("No records found.")
+    message("No se encontraron registros.")
     return(NULL)
   }
 
   if (!is.null(polygon)) {
-    message("Applying spatial filter...")
+    message("Aplicando filtro espacial...")
 
     if (is.character(polygon)) {
-      message("Reading polygon from file: ", polygon)
+      message("Leyendo pol\u00edgono desde archivo: ", polygon)
       filter_region <- sf::st_read(polygon, quiet = TRUE)
     } else {
       filter_region <- polygon
@@ -282,7 +282,7 @@ download_bndb <- function(scientific_name,
     
     filter_region <- sf::st_transform(filter_region, crs = crs)
 
-    message("Filtering points by polygon...")
+    message("Filtrando puntos por pol\u00edgono...")
 
     occ_sf <- sf::st_as_sf(all_occurrences,
                           coords = c("decimalLongitude", "decimalLatitude"),
@@ -293,7 +293,7 @@ download_bndb <- function(scientific_name,
     occ_filtered <- sf::st_intersection(occ_sf_transformed, filter_region)
 
     if (nrow(occ_filtered) == 0) {
-      message("No records found within the specified polygon")
+      message("No se encontraron registros dentro del pol\u00edgono especificado")
       return(NULL)
     }
 
@@ -305,17 +305,17 @@ download_bndb <- function(scientific_name,
       all_occurrences$decimalLongitude <- sf::st_coordinates(occ_filtered)[, 1]
     }
 
-    message("Filtered to ", nrow(all_occurrences), " records within polygon")
+    message("Filtrados ", nrow(all_occurrences), " registros dentro del pol\u00edgono")
   }
 
   if (map) {
-    message("Generating map...")
+    message("Generando mapa...")
 
     occ_for_map <- all_occurrences[!is.na(all_occurrences$decimalLatitude) & 
                                     !is.na(all_occurrences$decimalLongitude), ]
     
     if (nrow(occ_for_map) == 0) {
-      message("No records with valid coordinates to display on map")
+      message("No hay registros con coordenadas v\u00e1lidas para mostrar en el mapa")
     } else {
       if (!is.null(polygon)) {
         if (exists("filter_region")) {
@@ -333,23 +333,23 @@ download_bndb <- function(scientific_name,
         polygon_map <- sf::st_transform(polygon_map, crs = 4326)
         
         plot(sf::st_geometry(polygon_map), col = "lightblue", border = "blue", 
-             main = paste("Occurrences of", scientific_name))
+             main = paste("Ocurrencias de", scientific_name))
       } else {
         plot(occ_for_map$decimalLongitude, occ_for_map$decimalLatitude, 
-             type = "p", main = paste("Occurrences of", scientific_name),
-             xlab = "Longitude", ylab = "Latitude")
+             type = "p", main = paste("Ocurrencias de", scientific_name),
+             xlab = "Longitud", ylab = "Latitud")
       }
 
       points(occ_for_map$decimalLongitude, occ_for_map$decimalLatitude, 
              pch = 20, col = "red")
       
-      message("Displaying map...")
+      message("Mostrando mapa...")
     }
   }
 
   if (!is.null(out_file)) {
     if (output == "shp") {
-      message("Saving as shapefile in CRS: ", crs)
+      message("Guardando como shapefile en CRS: ", crs)
       
       occ_sf <- sf::st_as_sf(all_occurrences,
                             coords = c("decimalLongitude", "decimalLatitude"),
@@ -363,10 +363,10 @@ download_bndb <- function(scientific_name,
         out_file <- paste0(out_file, ".shp")
       }
       sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
-      message("Saved to: ", out_file)
+      message("Guardado en: ", out_file)
       
     } else if (output == "csv") {
-      message("Saving as CSV (WGS84 coordinates)")
+      message("Guardando como CSV (coordenadas WGS84)")
       
       occ_sf <- sf::st_as_sf(all_occurrences,
                             coords = c("decimalLongitude", "decimalLatitude"),
@@ -378,10 +378,10 @@ download_bndb <- function(scientific_name,
         out_file <- paste0(out_file, ".csv")
       }
       write.csv(all_occurrences, out_file, row.names = FALSE)
-      message("Saved to: ", out_file)
+      message("Guardado en: ", out_file)
     }
   }
 
-  message("Done!")
+  message("\u00a1Completado!")
   return(all_occurrences)
 }
