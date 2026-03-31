@@ -1,8 +1,8 @@
 # rbndb
 
-Paquete de R para descargar datos de ocurrencia del Banco Nacional de Datos de Biodiversidad (BNDB) del Ecuador mediante web scraping.
+R package to download occurrence data from the Banco Nacional de Datos de Biodiversidad (BNDB) of Ecuador via web scraping.
 
-## Instalación
+## Installation
 
 ```r
 # Install from GitHub
@@ -11,83 +11,88 @@ devtools::install_github("ErickAngamarca/rbndb")
 library(rbndb)
 ```
 
-## Uso
+## Usage
 
 ```r
 library(rbndb)
 
-# Descargar datos para una especie (todo Ecuador)
+# Download data for a species (all Ecuador)
 occ <- download_bndb("Cedrela odorata")
 
-# Descargar datos filtrados por un archivo shapefile (CRS 32717)
-occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", crs = "EPSG:32717")
+# Download filtered by shapefile (CRS 32717)
+occ <- download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", crs = "EPSG:32717")
 
-# Descargar datos filtrados por un archivo GeoJSON
-occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.geojson", crs = "EPSG:4326")
+# Download filtered by GeoJSON
+occ <- download_bndb("Cedrela odorata", polygon = "path/to/polygon.geojson", crs = "EPSG:4326")
 
-# Descargar datos usando un objeto sf
+# Download using sf object
 library(sf)
-poly <- st_read("ruta/al/poligono.shp")
+poly <- st_read("path/to/polygon.shp")
 occ <- download_bndb("Cedrela odorata", polygon = poly, crs = "EPSG:32717")
 
-# Guardar como CSV
-download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", 
-              output = "csv", out_file = "datos")
+# Save as CSV
+download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
+              output = "csv", out_file = "data")
 
-# Guardar como Shapefile (requiere especificar CRS)
-download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", 
-              output = "shp", out_file = "datos", crs = "EPSG:32717")
+# Save as Shapefile (requires CRS)
+download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
+              output = "shp", out_file = "data", crs = "EPSG:32717")
 
-# Ver en mapa interactivo (requiere especificar CRS)
-download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", map = TRUE, crs = "EPSG:4326")
+# Display interactive map (requires CRS)
+download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", map = TRUE, crs = "EPSG:4326")
 
-# Especificar sistema de coordenadas WGS84
-occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", crs = "EPSG:4326")
+# Use WGS84 coordinates
+occ <- download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
 
-# Especificar número de páginas
+# Use UTM coordinates (for Ecuador)
+occ <- download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", crs = "EPSG:32717")
+
+# Specify number of pages
 occ <- download_bndb("Cedrela odorata", max_pages = 5)
 ```
 
-## Parámetros
+## Arguments
 
-| Parámetro | Tipo | Descripción | Requerido |
-|-----------|------|-------------|-----------|
-| `scientific_name` | character | Nombre científico de la especie (ej. "Cedrela odorata") | Sí |
-| `max_pages` | numeric | Número máximo de páginas a descargar (default 10) | No |
-| `delay` | numeric | Delay entre requests en segundos (default 0.5) | No |
-| `polygon` | character/sf | Ruta a archivo (shp/geojson) u objeto sf/SpatialPolygons | No |
-| `crs` | character | Sistema de coordenadas de salida (default "EPSG:32717") | Sí para output="shp" o map=TRUE |
-| `output` | character | Formato de salida: "csv" o "shp" (default "csv") | No |
-| `map` | logical | Si TRUE, muestra mapa interactivo con leaflet (default FALSE) | No |
-| `out_file` | character | Nombre del archivo de salida (sin extensión) | No |
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `scientific_name` | character | Scientific name of species (e.g., "Cedrela odorata") | Yes |
+| `max_pages` | numeric | Max pages to download (default 10) | No |
+| `delay` | numeric | Delay between requests in seconds (default 0.5) | No |
+| `polygon` | character/sf | Path to shapefile/GeoJSON or sf object | No |
+| `crs` | character | Coordinate system (default "EPSG:32717") | Yes for output="shp" or map=TRUE |
+| `output` | character | Output format: "csv" or "shp" (default "csv") | No |
+| `map` | logical | If TRUE, display interactive leaflet map (default FALSE) | No |
+| `out_file` | character | Output filename (without extension) | No |
 
-### Sistema de Coordenadas (crs)
+### Coordinate System (crs)
 
-El parámetro `crs` acepta cualquier código EPSG válido. Los más comunes para Ecuador son:
+The `crs` parameter accepts any valid EPSG code. Common options for Ecuador:
 
-| CRS | Nombre | Uso recomendado |
-|-----|--------|-----------------|
-| `EPSG:32717` | WGS 84 / UTM zone 17S | **Default** - apropiado para Ecuador continental |
-| `EPSG:4326` | WGS 84 | Sistema geográfico (latitud/longitud) |
-| `EPSG:32617` | WGS 84 / UTM zone 17N | UTM norte |
-| `EPSG:24877` | PSAD 56 / UTM zone 17S | Sistema histórico |
+| CRS | Name | Recommended Use |
+|-----|------|-----------------|
+| `EPSG:32717` | WGS 84 / UTM zone 17S | **Default** - for Ecuador mainland |
+| `EPSG:4326` | WGS 84 | Geographic (lat/lon) |
+| `EPSG:32617` | WGS 84 / UTM zone 17N | UTM north |
+| `EPSG:24877` | PSAD 56 / UTM zone 17S | Historical system |
 
-### Requisitos
+### Requirements
 
-- **Si `output = "shp"`**: Debe especificar `crs`
-- **Si `map = TRUE`**: Debe especificar `crs`
+- **If `output = "shp"`**: You must specify `crs`
+- **If `map = TRUE`**: You must specify `crs`
 
-### Formato de Polígono
+### Polygon Format
 
-El parámetro `polygon` acepta:
-- Ruta a archivo shapefile: `"ruta/poligono.shp"`
-- Ruta a archivo GeoJSON: `"ruta/poligono.geojson"`
-- Objeto sf cargado en R
-- Objeto SpatialPolygons del paquete sp
+The `polygon` parameter accepts:
+- Shapefile path: `"path/to/polygon.shp"`
+- GeoJSON path: `"path/to/polygon.geojson"`
+- sf object loaded in R
+- SpatialPolygons object from sp package
 
-## Valor
+The package uses `sf::st_intersection` to clip points within the polygon.
 
-Retorna un dataframe con las siguientes columnas (Darwin Core):
+## Value
+
+Returns a data frame with the following Darwin Core columns:
 
 - occurrenceID
 - scientificName
@@ -113,44 +118,33 @@ Retorna un dataframe con las siguientes columnas (Darwin Core):
 - accessRights
 - basisOfRecord
 
-## Filtrado Espacial
+## Interactive Map
 
-Para filtrar los datos por un área específica, proporciona un polígono mediante el parámetro `polygon`. El polígono puede ser:
+When `map = TRUE`, an interactive leaflet map is displayed showing:
+- Occurrence points with popup containing species information
+- The filtering polygon (if specified)
 
-1. **Archivo shapefile**: Archivos .shp con extensión
-2. **Archivo GeoJSON**: Archivos .geojson o .json
-3. **Objeto sf**: Un objeto sf cargado en R
-4. **Objeto SpatialPolygons**: Del paquete sp
+## Notes
 
-El paquete usa `sf::st_intersection` para recortar los puntos dentro del polígono.
+- The package uses web scraping to obtain data from BNDB
+- Only downloads records with valid coordinates
+- Removes duplicates based on coordinates
+- Respects delay between requests to avoid overloading the server
 
-## Mapa Interactivo
+## Dependencies
 
-Cuando `map = TRUE`, se genera un mapa interactivo con leaflet que muestra:
-- Los puntos de ocurrencia con popup conteniendo información de la especie
-- El polígono del área de filtrado (si se especifica)
-
-## Notas
-
-- El paquete utiliza web scraping para obtener los datos del BNDB
-- Solo descarga registros que tienen coordenadas válidas
-- Elimina duplicados basándose en coordenadas
-- Respeta el delay entre requests para no sobrecargar el servidor
-
-## Dependencias
-
-El paquete requiere las siguientes librerías:
+The package requires the following libraries:
 - httr
 - rvest
 - sf
 - leaflet
 - magrittr
 
-## Autor
+## Author
 
 Erick Angamarca (erick.angamarca97@gmail.com)
 
-## Referencias
+## References
 
 - Banco Nacional de Datos de Biodiversidad (BNDB): https://bndb.sisbioecuador.bio
 - GADM: https://gadm.org
