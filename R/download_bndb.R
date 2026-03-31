@@ -128,43 +128,40 @@ download_bndb <- function(scientific_name,
           }
           
           if (!is.na(coord_line) && coord_line != "") {
-            coord_line_clean <- gsub("[\u00b0\u00b4'\u2032\u2033]", " ", coord_line)
+            coord_line_clean <- gsub("\u00b0", " ", coord_line)
+            coord_line_clean <- gsub("\u00b4|\u0027|\u2032|\u2033", " ", coord_line_clean)
+            coord_line_clean <- gsub("[''']", " ", coord_line_clean)
             coord_line_clean <- gsub("\\s+", " ", coord_line_clean)
             coord_line_clean <- gsub(";", " ", coord_line_clean)
-            coord_line_clean <- gsub("([NSns])", " \\1", coord_line_clean)
-            coord_line_clean <- gsub("([EWew])", " \\1", coord_line_clean)
             coord_line_clean <- trimws(coord_line_clean)
             
-            lat_lon <- c(NA, NA)
+            nums <- as.numeric(unlist(regmatches(coord_line_clean, gregexpr("[0-9]+", coord_line_clean))))
             
-            lat_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([NSns])", coord_line_clean))
-            lon_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([EWew])", coord_line_clean))
+            dirs <- unlist(regmatches(coord_line_clean, gregexpr("[NSnsEWew]", coord_line_clean)))
+            dirs <- toupper(dirs)
             
-            if (length(lat_dms[[1]]) > 1) {
-              lat_deg <- as.numeric(lat_dms[[1]][2])
-              lat_min <- as.numeric(lat_dms[[1]][3])
-              lat_sec <- as.numeric(lat_dms[[1]][4])
-              lat_dir <- toupper(lat_dms[[1]][5])
+            lat <- NA
+            lon <- NA
+            
+            if (length(nums) >= 4) {
+              lat_deg <- nums[1]
+              lat_min <- nums[2]
+              lat_sec <- ifelse(length(nums) >= 6, nums[3], 0)
+              lat_dir <- ifelse(dirs[1] == "S", "S", "N")
               lat <- lat_deg + lat_min/60 + lat_sec/3600
               if (lat_dir == "S") lat <- -lat
-            }
-            
-            if (length(lon_dms[[1]]) > 1) {
-              lon_deg <- as.numeric(lon_dms[[1]][2])
-              lon_min <- as.numeric(lon_dms[[1]][3])
-              lon_sec <- as.numeric(lon_dms[[1]][4])
-              lon_dir <- toupper(lon_dms[[1]][5])
+              
+              lon_deg <- nums[ifelse(length(nums) >= 6, 4, 3)]
+              lon_min <- nums[ifelse(length(nums) >= 6, 5, 4)]
+              lon_sec <- ifelse(length(nums) >= 6, nums[6], 0)
+              lon_dir <- ifelse(dirs[2] == "W", "W", "E")
               lon <- lon_deg + lon_min/60 + lon_sec/3600
               if (lon_dir == "W") lon <- -lon
-            }
-            
-            if (length(lon_dms[[1]]) > 1) {
-              lon_deg <- as.numeric(lon_dms[[1]][2])
-              lon_min <- as.numeric(lon_dms[[1]][3])
-              lon_sec <- as.numeric(lon_dms[[1]][4])
-              lon_dir <- lon_dms[[1]][5]
-              lon <- lon_deg + lon_min/60 + lon_sec/3600
-              if (lon_dir == "W") lon <- -lon
+            } else if (length(nums) >= 2) {
+              lat <- nums[1]
+              lon <- nums[2]
+              if (any(dirs == "S")) lat <- -abs(lat)
+              if (any(dirs == "W")) lon <- -abs(lon)
             }
             
             if (is.na(lat) || is.na(lon)) {
