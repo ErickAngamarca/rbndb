@@ -8,6 +8,7 @@
 #'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
 #'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
 #' @param crs Coordinate reference system for output. Required if output = "shp" or map = TRUE.
+#'   If NULL (default), returns WGS84 coordinates. If specified with output = "shp", exports in that CRS.
 #'   Supported CRS codes:
 #'   - "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
 #'   - "EPSG:32716" - WGS 84 / UTM zone 16S
@@ -60,7 +61,7 @@ download_bndb <- function(scientific_name,
                           max_pages = 10,
                           delay = 0.5,
                           polygon = NULL,
-                          crs = "EPSG:32717",
+                          crs = NULL,
                           output = "csv",
                           map = FALSE,
                           out_file = NULL) {
@@ -347,6 +348,41 @@ download_bndb <- function(scientific_name,
              pch = 20, col = "red")
       
       message("Displaying map...")
+    }
+  }
+
+  if (!is.null(out_file)) {
+    if (output == "shp") {
+      message("Saving as shapefile in CRS: ", crs)
+      
+      occ_sf <- sf::st_as_sf(all_occurrences,
+                            coords = c("decimalLongitude", "decimalLatitude"),
+                            crs = 4326)
+      
+      if (!is.null(crs) && crs != "EPSG:4326" && crs != 4326) {
+        occ_sf <- sf::st_transform(occ_sf, crs = crs)
+      }
+      
+      if (!grepl("\\.shp$", out_file)) {
+        out_file <- paste0(out_file, ".shp")
+      }
+      sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
+      message("Saved to: ", out_file)
+      
+    } else if (output == "csv") {
+      message("Saving as CSV (WGS84 coordinates)")
+      
+      occ_sf <- sf::st_as_sf(all_occurrences,
+                            coords = c("decimalLongitude", "decimalLatitude"),
+                            crs = 4326)
+      all_occurrences <- as.data.frame(occ_sf)
+      all_occurrences <- all_occurrences[, !names(all_occurrences) %in% c("geometry")]
+      
+      if (!grepl("\\.csv$", out_file)) {
+        out_file <- paste0(out_file, ".csv")
+      }
+      write.csv(all_occurrences, out_file, row.names = FALSE)
+      message("Saved to: ", out_file)
     }
   }
 
