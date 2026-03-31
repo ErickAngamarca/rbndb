@@ -11,6 +11,4 @@ Imports:
     httr,
     rvest,
     sf,
-    geodata,
-    leaflet,
-    dplyr
+    leaflet

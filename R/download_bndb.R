@@ -3,35 +3,53 @@
 #' @param scientific_name Scientific name of the species
 #' @param max_pages Maximum number of pages to download (default 10)
 #' @param delay Delay between requests in seconds (default 0.5)
-#' @param province Province name (GADM level 1). If NULL, downloads all Ecuador
-#' @param canton Canton name (GADM level 2)
-#' @param parish Parish name (GADM level 3)
-#' @param crs Coordinate reference system (default "EPSG:32717")
+#' @param polygon SpatialPolygonsDataFrame, sf object, or file path to shapefile/GeoJSON.
+#'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
+#'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
+#' @param crs Coordinate reference system for output (default "EPSG:32717").
+#'   Use "EPSG:4326" for WGS84.
 #' @param output Output format: "csv" or "shp" (default "csv")
-#' @param map If TRUE, display map with leaflet (default FALSE)
+#' @param map If TRUE, display interactive map with leaflet (default FALSE)
 #' @param out_file Output filename without extension (if NULL, returns object in R)
-#' @return Data frame or sf object with occurrence data
+#' @return Data frame with occurrence data
 #' @export
 #' @importFrom httr GET
 #' @importFrom rvest read_html html_text html_nodes html_attr
-#' @importFrom sf st_as_sf st_transform st_intersection st_write
-#' @importFrom geodata gadm
+#' @importFrom sf st_as_sf st_transform st_intersection st_read st_write st_crs
 #' @importFrom leaflet leaflet addTiles addMarkers addPolygons
-#' @importFrom dplyr filter select
 #' @examples
 #' \dontrun{
+#' # Download all records for a species (all Ecuador)
 #' occ <- download_bndb("Vismia baccifera")
-#' occ <- download_bndb("Escallonia micrantha", province = "Loja")
-#' download_bndb("Vismia baccifera", province = "Loja", output = "shp", out_file = "data")
-#' download_bndb("Vismia baccifera", map = TRUE)
+#'
+#' # Download records filtered by a shapefile
+#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp")
+#'
+#' # Download records filtered by an sf object
+#' library(sf)
+#' poly <- st_read("path/to/polygon.geojson")
+#' occ <- download_bndb("Vismia baccifera", polygon = poly)
+#'
+#' # Save as CSV
+#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#'               output = "csv", out_file = "data")
+#'
+#' # Save as shapefile
+#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#'               output = "shp", out_file = "data")
+#'
+#' # Display interactive map
+#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", map = TRUE)
+#'
+#' # Use different CRS
+#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#'                      crs = "EPSG:4326")
 #' }
 
 download_bndb <- function(scientific_name,
                           max_pages = 10,
                           delay = 0.5,
-                          province = NULL,
-                          canton = NULL,
-                          parish = NULL,
+                          polygon = NULL,
                           crs = "EPSG:32717",
                           output = "csv",
                           map = FALSE,
@@ -157,40 +175,23 @@ download_bndb <- function(scientific_name,
     return(NULL)
   }
 
-  has_filter <- !is.null(parish) || !is.null(canton) || !is.null(province)
-
-  if (has_filter) {
+  if (!is.null(polygon)) {
     message("Applying spatial filter...")
 
-    if (!is.null(parish)) {
-      level <- 3
-      filter_name <- parish
-      filter_col <- "NAME_3"
-    } else if (!is.null(canton)) {
-      level <- 2
-      filter_name <- canton
-      filter_col <- "NAME_2"
+    if (is.character(polygon)) {
+      message("Reading polygon from file: ", polygon)
+      filter_region <- sf::st_read(polygon, quiet = TRUE)
     } else {
-      level <- 1
-      filter_name <- province
-      filter_col <- "NAME_1"
+      filter_region <- polygon
     }
 
-    message("Loading GADM boundary data (level ", level, ")...")
-    ecuador <- geodata::gadm("ECU", level = level, path = tempdir())
-
-    available_names <- unique(ecuador[[filter_col]])
-
-    if (!filter_name %in% available_names) {
-      message("\nError: '", filter_name, "' not found.")
-      message("Available ", filter_col, " options:")
-      print(sort(available_names))
-      stop("Invalid name. Please check the options above.")
+    if (inherits(filter_region, "SpatialPolygons")) {
+      filter_region <- sf::st_as_sf(filter_region)
     }
 
-    filter_region <- ecuador[ecuador[[filter_col]] == filter_name, ]
+    filter_region <- sf::st_transform(filter_region, crs = 4326)
 
-    message("Filtering to: ", filter_name)
+    message("Filtering points by polygon...")
 
     occ_sf <- sf::st_as_sf(all_occurrences,
                           coords = c("decimalLongitude", "decimalLatitude"),
@@ -201,7 +202,7 @@ download_bndb <- function(scientific_name,
     occ_filtered <- sf::st_intersection(occ_sf, filter_region)
 
     if (nrow(occ_filtered) == 0) {
-      message("No records found within ", filter_name)
+      message("No records found within the specified polygon")
       return(NULL)
     }
 
@@ -210,10 +211,10 @@ download_bndb <- function(scientific_name,
     all_occurrences$decimalLatitude <- sf::st_coordinates(occ_filtered)[, 2]
     all_occurrences$decimalLongitude <- sf::st_coordinates(occ_filtered)[, 1]
 
-    message("Filtered to ", nrow(all_occurrences), " records within ", filter_name)
+    message("Filtered to ", nrow(all_occurrences), " records within polygon")
   }
 
-  if (crs != "EPSG:32717") {
+  if (crs != "EPSG:32717" && !is.null(crs)) {
     occ_sf <- sf::st_as_sf(all_occurrences,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
@@ -242,7 +243,7 @@ download_bndb <- function(scientific_name,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
 
-    if (has_filter) {
+    if (!is.null(polygon)) {
       leaflet_map <- leaflet::leaflet(filter_region) %>%
         leaflet::addTiles() %>%
         leaflet::addPolygons(fillColor = "blue", fillOpacity = 0.2, color = "blue", weight = 2) %>%
