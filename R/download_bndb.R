@@ -7,9 +7,12 @@
 #'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
 #'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
 #' @param crs Coordinate reference system for output (default "EPSG:32717").
-#'   Use "EPSG:4326" for WGS84.
+#'   Required if output = "shp" or map = TRUE. Common options:
+#'   - "EPSG:32717" - UTM zone 17S (default, appropriate for Ecuador)
+#'   - "EPSG:4326" - WGS84 (latitude/longitude)
 #' @param output Output format: "csv" or "shp" (default "csv")
-#' @param map If TRUE, display interactive map with leaflet (default FALSE)
+#' @param map If TRUE, display interactive map with leaflet (default FALSE).
+#'   Requires crs to be specified.
 #' @param out_file Output filename without extension (if NULL, returns object in R)
 #' @return Data frame with occurrence data
 #' @export
@@ -17,33 +20,26 @@
 #' @importFrom rvest read_html html_text html_nodes html_attr
 #' @importFrom sf st_as_sf st_transform st_intersection st_read st_write st_crs
 #' @importFrom leaflet leaflet addTiles addMarkers addPolygons
+#' @importFrom magrittr %>%
 #' @examples
 #' \dontrun{
 #' # Download all records for a species (all Ecuador)
 #' occ <- download_bndb("Vismia baccifera")
 #'
-#' # Download records filtered by a shapefile
-#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp")
-#'
-#' # Download records filtered by an sf object
-#' library(sf)
-#' poly <- st_read("path/to/polygon.geojson")
-#' occ <- download_bndb("Vismia baccifera", polygon = poly)
+#' # Download records filtered by a shapefile (WGS84)
+#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
 #'
 #' # Save as CSV
 #' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
 #'               output = "csv", out_file = "data")
 #'
-#' # Save as shapefile
+#' # Save as shapefile in UTM
 #' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
-#'               output = "shp", out_file = "data")
+#'               output = "shp", out_file = "data", crs = "EPSG:32717")
 #'
-#' # Display interactive map
-#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", map = TRUE)
-#'
-#' # Use different CRS
-#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
-#'                      crs = "EPSG:4326")
+#' # Display interactive map (requires crs)
+#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#'               map = TRUE, crs = "EPSG:4326")
 #' }
 
 download_bndb <- function(scientific_name,
@@ -54,6 +50,18 @@ download_bndb <- function(scientific_name,
                           output = "csv",
                           map = FALSE,
                           out_file = NULL) {
+
+  if (output == "shp" && is.null(crs)) {
+    stop("CRS must be specified when output = 'shp'. Use crs = 'EPSG:32717' or crs = 'EPSG:4326'")
+  }
+  
+  if (map && is.null(crs)) {
+    stop("CRS must be specified when map = TRUE. Use crs = 'EPSG:32717' or crs = 'EPSG:4326'")
+  }
+  
+  if (is.null(crs)) {
+    crs <- "EPSG:4326"
+  }
 
   message("Starting BNDB download for: ", scientific_name)
 
@@ -189,7 +197,13 @@ download_bndb <- function(scientific_name,
       filter_region <- sf::st_as_sf(filter_region)
     }
 
-    filter_region <- sf::st_transform(filter_region, crs = 4326)
+    polygon_crs <- sf::st_crs(filter_region)
+    
+    if (is.null(crs)) {
+      crs <- "EPSG:4326"
+    }
+    
+    filter_region <- sf::st_transform(filter_region, crs = crs)
 
     message("Filtering points by polygon...")
 
@@ -197,7 +211,7 @@ download_bndb <- function(scientific_name,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
 
-    occ_sf <- sf::st_transform(occ_sf, crs = sf::st_crs(filter_region))
+    occ_sf <- sf::st_transform(occ_sf, crs = crs)
 
     occ_filtered <- sf::st_intersection(occ_sf, filter_region)
 
@@ -214,7 +228,7 @@ download_bndb <- function(scientific_name,
     message("Filtered to ", nrow(all_occurrences), " records within polygon")
   }
 
-  if (crs != "EPSG:32717" && !is.null(crs)) {
+  if (!is.null(crs)) {
     occ_sf <- sf::st_as_sf(all_occurrences,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
@@ -227,33 +241,57 @@ download_bndb <- function(scientific_name,
     if (output == "shp") {
       occ_sf <- sf::st_as_sf(all_occurrences,
                             coords = c("decimalLongitude", "decimalLatitude"),
-                            crs = 4326)
-      sf::st_write(occ_sf, paste0(out_file, ".shp"), delete_dsn = TRUE)
-      message("Saved to: ", out_file, ".shp")
+                            crs = crs)
+      if (!grepl("\\.shp$", out_file)) {
+        out_file <- paste0(out_file, ".shp")
+      }
+      sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
+      message("Saved to: ", out_file)
     } else if (output == "csv") {
-      write.csv(all_occurrences, paste0(out_file, ".csv"), row.names = FALSE)
-      message("Saved to: ", out_file, ".csv")
+      if (!grepl("\\.csv$", out_file)) {
+        out_file <- paste0(out_file, ".csv")
+      }
+      write.csv(all_occurrences, out_file, row.names = FALSE)
+      message("Saved to: ", out_file)
     }
   }
 
   if (map) {
     message("Generating map...")
 
+    if (is.null(crs)) {
+      crs <- "EPSG:4326"
+    }
+
     occ_sf <- sf::st_as_sf(all_occurrences,
                           coords = c("decimalLongitude", "decimalLatitude"),
-                          crs = 4326)
+                          crs = crs)
 
     if (!is.null(polygon)) {
-      leaflet_map <- leaflet::leaflet(filter_region) %>%
+      if (exists("filter_region")) {
+        polygon_map <- filter_region
+      } else {
+        if (is.character(polygon)) {
+          polygon_map <- sf::st_read(polygon, quiet = TRUE)
+        } else {
+          polygon_map <- polygon
+        }
+        if (inherits(polygon_map, "SpatialPolygons")) {
+          polygon_map <- sf::st_as_sf(polygon_map)
+        }
+        polygon_map <- sf::st_transform(polygon_map, crs = crs)
+      }
+      
+      leaflet_map <- leaflet::leaflet() %>%
         leaflet::addTiles() %>%
-        leaflet::addPolygons(fillColor = "blue", fillOpacity = 0.2, color = "blue", weight = 2) %>%
+        leaflet::addPolygons(data = polygon_map, fillColor = "blue", fillOpacity = 0.2, color = "blue", weight = 2) %>%
         leaflet::addMarkers(data = occ_sf, popup = ~paste0("<b>", scientificName, "</b><br>",
                                                            "Locality: ", locality))
     } else {
-      leaflet_map <- leaflet::leaflet(occ_sf) %>%
+      leaflet_map <- leaflet::leaflet() %>%
         leaflet::addTiles() %>%
-        leaflet::addMarkers(popup = ~paste0("<b>", scientificName, "</b><br>",
-                                              "Locality: ", locality))
+        leaflet::addMarkers(data = occ_sf, popup = ~paste0("<b>", scientificName, "</b><br>",
+                                                           "Locality: ", locality))
     }
 
     message("Displaying map...")

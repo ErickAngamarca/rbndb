@@ -17,50 +17,49 @@ library(rbndb)
 library(rbndb)
 
 # Descargar datos para una especie (todo Ecuador)
-occ <- download_bndb("Vismia baccifera")
+occ <- download_bndb("Cedrela odorata")
 
-# Descargar datos filtrados por un archivo shapefile
-occ <- download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.shp")
+# Descargar datos filtrados por un archivo shapefile (CRS 32717)
+occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", crs = "EPSG:32717")
 
 # Descargar datos filtrados por un archivo GeoJSON
-occ <- download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.geojson")
+occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.geojson", crs = "EPSG:4326")
 
 # Descargar datos usando un objeto sf
 library(sf)
 poly <- st_read("ruta/al/poligono.shp")
-occ <- download_bndb("Vismia baccifera", polygon = poly)
+occ <- download_bndb("Cedrela odorata", polygon = poly, crs = "EPSG:32717")
 
 # Guardar como CSV
-download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.shp", 
+download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", 
               output = "csv", out_file = "datos")
 
-# Guardar como Shapefile
-download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.shp", 
-              output = "shp", out_file = "datos")
+# Guardar como Shapefile (requiere especificar CRS)
+download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", 
+              output = "shp", out_file = "datos", crs = "EPSG:32717")
 
-# Ver en mapa interactivo
-download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.shp", map = TRUE)
+# Ver en mapa interactivo (requiere especificar CRS)
+download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", map = TRUE, crs = "EPSG:4326")
 
-# Especificar sistema de coordenadas diferente
-occ <- download_bndb("Vismia baccifera", polygon = "ruta/al/poligono.shp", 
-                     crs = "EPSG:4326")
+# Especificar sistema de coordenadas WGS84
+occ <- download_bndb("Cedrela odorata", polygon = "ruta/al/poligono.shp", crs = "EPSG:4326")
 
 # Especificar número de páginas
-occ <- download_bndb("Escallonia micrantha", max_pages = 5)
+occ <- download_bndb("Cedrela odorata", max_pages = 5)
 ```
 
 ## Parámetros
 
-| Parámetro | Tipo | Descripción |
-|-----------|------|-------------|
-| `scientific_name` | character | Nombre científico de la especie (ej. "Vismia baccifera") |
-| `max_pages` | numeric | Número máximo de páginas a descargar (default 10, máx 1000 registros) |
-| `delay` | numeric | Delay entre requests en segundos (default 0.5) |
-| `polygon` | character/sf | Ruta a archivo (shp/geojson) u objeto sf/SpatialPolygons para filtrado espacial |
-| `crs` | character | Sistema de coordenadas de salida |
-| `output` | character | Formato de salida: "csv" o "shp" (default "csv") |
-| `map` | logical | Si TRUE, muestra mapa interactivo con leaflet (default FALSE) |
-| `out_file` | character | Nombre del archivo de salida (sin extensión). Si NULL, retorna objeto en R |
+| Parámetro | Tipo | Descripción | Requerido |
+|-----------|------|-------------|-----------|
+| `scientific_name` | character | Nombre científico de la especie (ej. "Cedrela odorata") | Sí |
+| `max_pages` | numeric | Número máximo de páginas a descargar (default 10) | No |
+| `delay` | numeric | Delay entre requests en segundos (default 0.5) | No |
+| `polygon` | character/sf | Ruta a archivo (shp/geojson) u objeto sf/SpatialPolygons | No |
+| `crs` | character | Sistema de coordenadas de salida (default "EPSG:32717") | Sí para output="shp" o map=TRUE |
+| `output` | character | Formato de salida: "csv" o "shp" (default "csv") | No |
+| `map` | logical | Si TRUE, muestra mapa interactivo con leaflet (default FALSE) | No |
+| `out_file` | character | Nombre del archivo de salida (sin extensión) | No |
 
 ### Sistema de Coordenadas (crs)
 
@@ -69,23 +68,14 @@ El parámetro `crs` acepta cualquier código EPSG válido. Los más comunes para
 | CRS | Nombre | Uso recomendado |
 |-----|--------|-----------------|
 | `EPSG:32717` | WGS 84 / UTM zone 17S | **Default** - apropiado para Ecuador continental |
-| `EPSG:32716` | WGS 84 / UTM zone 16S | Ecuador occidental |
-| `EPSG:32718` | WGS 84 / UTM zone 18S | Ecuador oriental |
-| `EPSG:4326` | WGS 84 | Sistema geográfico (latitud/longitud) - estándar GPS |
+| `EPSG:4326` | WGS 84 | Sistema geográfico (latitud/longitud) |
 | `EPSG:32617` | WGS 84 / UTM zone 17N | UTM norte |
-| `EPSG:32618` | WGS 84 / UTM zone 18N | UTM norte |
-| `EPSG:32714` | WGS 84 / UTM zone 14S | Costa norte |
-| `EPSG:32715` | WGS 84 / UTM zone 15S | Costa central |
-| `EPSG:32713` | WGS 84 / UTM zone 13S | Sur de Ecuador |
-| `EPSG:6248` | SIRGAS 2000 / UTM zone 17S | Sistema de referencia moderno Latinoamérica |
-| `EPSG:24877` | PSAD 56 / UTM zone 17S | Sistema histórico usado en Ecuador |
-| `EPSG:24878` | PSAD 56 / UTM zone 18S | Sistema histórico |
-| `EPSG:24876` | PSAD 56 / UTM zone 16S | Sistema histórico |
-| `EPSG:4248` | PSAD 56 | Sistema geográfico histórico |
-| `EPSG:4269` | NAD 27 | Sistema norteamericano (poco usado) |
-| `EPSG:26717` | NAD 27 / UTM zone 17N | Sistema histórico |
+| `EPSG:24877` | PSAD 56 / UTM zone 17S | Sistema histórico |
 
-**Nota**: Ecuador ha usado varios sistemas de coordenadas históricamente. PSAD 56 es común en datos antiguos, mientras que WGS84/SIRGAS 2000 es el estándar actual.
+### Requisitos
+
+- **Si `output = "shp"`**: Debe especificar `crs`
+- **Si `map = TRUE`**: Debe especificar `crs`
 
 ### Formato de Polígono
 
@@ -146,8 +136,6 @@ Cuando `map = TRUE`, se genera un mapa interactivo con leaflet que muestra:
 - Solo descarga registros que tienen coordenadas válidas
 - Elimina duplicados basándose en coordenadas
 - Respeta el delay entre requests para no sobrecargar el servidor
-- El polígono debe estar en WGS84 (EPSG:4326) o en un sistema proyectado
-- Los datos originales del BNDB vienen en WGS84 (EPSG:4326)
 
 ## Dependencias
 
@@ -156,6 +144,7 @@ El paquete requiere las siguientes librerías:
 - rvest
 - sf
 - leaflet
+- magrittr
 
 ## Autor
 
