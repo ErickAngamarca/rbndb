@@ -97,6 +97,7 @@ Returns a data frame with the following Darwin Core columns:
 
 - The package uses web scraping to obtain data from BNDB
 - Only downloads records with valid coordinates
+- All coordinates are in WGS84 (EPSG:4326) decimal degrees format
 - Respects delay between requests to avoid overloading the server
 
 ## Dependencies
