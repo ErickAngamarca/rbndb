@@ -1,4 +1,2 @@
 export(download_bndb)
 importFrom(utils, write.csv)
-importFrom(magrittr, "%>%")
-importFrom(graphics, points, plot)

@@ -21,20 +21,17 @@ flush(stderr()); flush(stdout())
 ##D # Download all records for a species (all Ecuador)
 ##D occ <- download_bndb("Cedrela odorata")
 ##D 
-##D # Download records filtered by a shapefile
-##D occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+##D # Download with filtering (Ecuador bounds, no duplicates, no NA)
+##D occ <- download_bndb("Alnus acuminata", filt = TRUE)
+##D 
+##D # Download filtered by a shapefile
+##D occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp")
 ##D 
 ##D # Save as CSV
-##D download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-##D               output = "csv", out_file = "data")
+##D download_bndb("Cedrela odorata", filetype = "csv", out_file = "data")
 ##D 
-##D # Save as shapefile in UTM (crs required)
-##D download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-##D               output = "shp", out_file = "data", crs = "EPSG:32717")
-##D 
-##D # Display interactive map (crs required)
-##D download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
-##D               map = TRUE, crs = "EPSG:4326")
+##D # Save as Excel
+##D download_bndb("Cedrela odorata", filetype = "excel", out_file = "data")
 ## End(Not run)
 
 

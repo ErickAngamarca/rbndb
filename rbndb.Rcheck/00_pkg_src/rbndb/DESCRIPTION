@@ -7,8 +7,8 @@ Description: Download occurrence data from the Banco Nacional de Datos de
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
-Imports: rvest, sf, magrittr
+Imports: rvest, sf, magrittr, openxlsx
 NeedsCompilation: no
-Packaged: 2026-03-31 20:09:22 UTC; wally
+Packaged: 2026-03-31 23:39:52 UTC; wally
 Author: Erick Angamarca [aut, cre]
 Maintainer: Erick Angamarca <erick.angamarca97@gmail.com>

@@ -5,77 +5,39 @@
 #' @param max_pages Maximum number of pages to download (default 10, range: 1-100)
 #' @param delay Delay between requests in seconds (default 0.5)
 #' @param polygon SpatialPolygonsDataFrame, sf object, or file path to shapefile/GeoJSON.
-#'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
-#'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
-#' @param crs Coordinate reference system for output. Required if output = "shp" or map = TRUE.
-#'   Supported CRS codes:
-#'   - "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
-#'   - "EPSG:32716" - WGS 84 / UTM zone 16S
-#'   - "EPSG:32718" - WGS 84 / UTM zone 18S
-#'   - "EPSG:4326" - WGS 84 (latitude/longitude)
-#'   - "EPSG:32617" - WGS 84 / UTM zone 17N
-#'   - "EPSG:32618" - WGS 84 / UTM zone 18N
-#'   - "EPSG:32714" - WGS 84 / UTM zone 14S
-#'   - "EPSG:32715" - WGS 84 / UTM zone 15S
-#'   - "EPSG:32713" - WGS 84 / UTM zone 13S
-#'   - "EPSG:6248" - SIRGAS 2000 / UTM zone 17S
-#'   - "EPSG:6247" - SIRGAS 2000 / UTM zone 16S
-#'   - "EPSG:24877" - PSAD 56 / UTM zone 17S (historical)
-#'   - "EPSG:24878" - PSAD 56 / UTM zone 18S
-#'   - "EPSG:24876" - PSAD 56 / UTM zone 16S
-#'   - "EPSG:4248" - PSAD 56 (geographic)
-#'   - "EPSG:4269" - NAD 27 (geographic)
-#' @param output Output format: "csv" (default) or "shp". If "shp", crs must be specified.
-#' @param map If TRUE, display simple plot map (default FALSE).
-#'   Requires crs to be specified.
+#'   If provided, filters occurrences to within the polygon.
+#' @param filt If TRUE, filters records to valid Ecuador coordinates, removes duplicates and NA (default FALSE).
+#' @param filetype Output format: "csv" (default) or "excel".
 #' @param out_file Output filename without extension (if NULL, returns object in R)
 #' @return Data frame with occurrence data
 #' @export
-#' @importFrom httr GET
 #' @importFrom rvest read_html html_text html_nodes html_attr
-#' @importFrom sf st_as_sf st_transform st_intersection st_read st_write st_crs
-#' @importFrom magrittr %>%
+#' @importFrom sf st_as_sf st_transform st_intersection st_read st_crs
 #' @examples
 #' \dontrun{
 #' # Download all records for a species (all Ecuador)
 #' occ <- download_bndb("Cedrela odorata")
 #'
-#' # Download records filtered by a shapefile
-#' occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+#' # Download with filtering (Ecuador boundaries, no duplicates, no NA)
+#' occ <- download_bndb("Alnus acuminata", filt = TRUE)
+#'
+#' # Download filtered by a shapefile
+#' occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp")
 #'
 #' # Save as CSV
-#' download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-#'               output = "csv", out_file = "data")
+#' download_bndb("Cedrela odorata", filetype = "csv", out_file = "data")
 #'
-#' # Save as shapefile in UTM (crs required)
-#' download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-#'               output = "shp", out_file = "data", crs = "EPSG:32717")
-#'
-#' # Display interactive map (crs required)
-#' download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
-#'               map = TRUE, crs = "EPSG:4326")
+#' # Save as Excel
+#' download_bndb("Cedrela odorata", filetype = "excel", out_file = "data")
 #' }
 
 download_bndb <- function(scientific_name,
-                          max_pages = 10,
-                          delay = 0.5,
-                          polygon = NULL,
-                          crs = NULL,
-                          output = "csv",
-                          map = FALSE,
-                          out_file = NULL) {
-
-  if (output == "shp" && is.null(crs)) {
-    stop("CRS must be specified when output = 'shp'. Use crs = 'EPSG:32717' or crs = 'EPSG:4326'")
-  }
-  
-  if (map && is.null(crs)) {
-    stop("CRS must be specified when map = TRUE. Use crs = 'EPSG:32717' or crs = 'EPSG:4326'")
-  }
-  
-  if (is.null(crs)) {
-    crs <- "EPSG:4326"
-  }
+                         max_pages = 10,
+                         delay = 0.5,
+                         polygon = NULL,
+                         filt = FALSE,
+                         filetype = "csv",
+                         out_file = NULL) {
 
   message("Starting BNDB download for: ", scientific_name)
 
@@ -128,43 +90,40 @@ download_bndb <- function(scientific_name,
           }
           
           if (!is.na(coord_line) && coord_line != "") {
-            coord_line_clean <- gsub("[\u00b0\u00b4'\u2032\u2033]", " ", coord_line)
+            coord_line_clean <- gsub("\u00b0", " ", coord_line)
+            coord_line_clean <- gsub("\u00b4|\u0027|\u2032|\u2033", " ", coord_line_clean)
+            coord_line_clean <- gsub("[''']", " ", coord_line_clean)
             coord_line_clean <- gsub("\\s+", " ", coord_line_clean)
             coord_line_clean <- gsub(";", " ", coord_line_clean)
-            coord_line_clean <- gsub("([NSns])", " \\1", coord_line_clean)
-            coord_line_clean <- gsub("([EWew])", " \\1", coord_line_clean)
             coord_line_clean <- trimws(coord_line_clean)
             
-            lat_lon <- c(NA, NA)
+            nums <- as.numeric(unlist(regmatches(coord_line_clean, gregexpr("[0-9]+", coord_line_clean))))
             
-            lat_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([NSns])", coord_line_clean))
-            lon_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([EWew])", coord_line_clean))
+            dirs <- unlist(regmatches(coord_line_clean, gregexpr("[NSnsEWew]", coord_line_clean)))
+            dirs <- toupper(dirs)
             
-            if (length(lat_dms[[1]]) > 1) {
-              lat_deg <- as.numeric(lat_dms[[1]][2])
-              lat_min <- as.numeric(lat_dms[[1]][3])
-              lat_sec <- as.numeric(lat_dms[[1]][4])
-              lat_dir <- toupper(lat_dms[[1]][5])
+            lat <- NA
+            lon <- NA
+            
+            if (length(nums) >= 4) {
+              lat_deg <- nums[1]
+              lat_min <- nums[2]
+              lat_sec <- ifelse(length(nums) >= 6, nums[3], 0)
+              lat_dir <- ifelse(dirs[1] == "S", "S", "N")
               lat <- lat_deg + lat_min/60 + lat_sec/3600
               if (lat_dir == "S") lat <- -lat
-            }
-            
-            if (length(lon_dms[[1]]) > 1) {
-              lon_deg <- as.numeric(lon_dms[[1]][2])
-              lon_min <- as.numeric(lon_dms[[1]][3])
-              lon_sec <- as.numeric(lon_dms[[1]][4])
-              lon_dir <- toupper(lon_dms[[1]][5])
+              
+              lon_deg <- nums[ifelse(length(nums) >= 6, 4, 3)]
+              lon_min <- nums[ifelse(length(nums) >= 6, 5, 4)]
+              lon_sec <- ifelse(length(nums) >= 6, nums[6], 0)
+              lon_dir <- ifelse(dirs[2] == "W", "W", "E")
               lon <- lon_deg + lon_min/60 + lon_sec/3600
               if (lon_dir == "W") lon <- -lon
-            }
-            
-            if (length(lon_dms[[1]]) > 1) {
-              lon_deg <- as.numeric(lon_dms[[1]][2])
-              lon_min <- as.numeric(lon_dms[[1]][3])
-              lon_sec <- as.numeric(lon_dms[[1]][4])
-              lon_dir <- lon_dms[[1]][5]
-              lon <- lon_deg + lon_min/60 + lon_sec/3600
-              if (lon_dir == "W") lon <- -lon
+            } else if (length(nums) >= 2) {
+              lat <- nums[1]
+              lon <- nums[2]
+              if (any(dirs == "S")) lat <- -abs(lat)
+              if (any(dirs == "W")) lon <- -abs(lon)
             }
             
             if (is.na(lat) || is.na(lon)) {
@@ -250,17 +209,32 @@ download_bndb <- function(scientific_name,
     })
   }
 
-  if (nrow(all_occurrences) > 0) {
-    all_occurrences <- all_occurrences[!duplicated(
-      paste(all_occurrences$decimalLatitude, all_occurrences$decimalLongitude)
-    ), ]
-  }
-
   message("Download complete. Total records with coordinates: ", nrow(all_occurrences))
 
   if (nrow(all_occurrences) == 0) {
     message("No records found.")
     return(NULL)
+  }
+
+  if (filt) {
+    message("Applying filter: Ecuador bounds, removing duplicates and NA...")
+    
+    all_occurrences <- all_occurrences[!is.na(all_occurrences$decimalLatitude), ]
+    all_occurrences <- all_occurrences[!is.na(all_occurrences$decimalLongitude), ]
+    
+    all_occurrences <- all_occurrences[all_occurrences$decimalLatitude != 0 & 
+                                        all_occurrences$decimalLongitude != 0, ]
+    
+    all_occurrences <- all_occurrences[all_occurrences$decimalLatitude >= -5 & 
+                                        all_occurrences$decimalLatitude <= 2, ]
+    all_occurrences <- all_occurrences[all_occurrences$decimalLongitude >= -82 & 
+                                        all_occurrences$decimalLongitude <= -75, ]
+    
+    all_occurrences <- all_occurrences[!duplicated(
+      paste(all_occurrences$decimalLatitude, all_occurrences$decimalLongitude)
+    ), ]
+    
+    message("Filtered to ", nrow(all_occurrences), " valid records")
   }
 
   if (!is.null(polygon)) {
@@ -277,13 +251,7 @@ download_bndb <- function(scientific_name,
       filter_region <- sf::st_as_sf(filter_region)
     }
 
-    polygon_crs <- sf::st_crs(filter_region)
-    
-    if (is.null(crs)) {
-      crs <- "EPSG:4326"
-    }
-    
-    filter_region <- sf::st_transform(filter_region, crs = crs)
+    filter_region <- sf::st_transform(filter_region, crs = 4326)
 
     message("Filtering points by polygon...")
 
@@ -291,9 +259,7 @@ download_bndb <- function(scientific_name,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
 
-    occ_sf_transformed <- sf::st_transform(occ_sf, crs = crs)
-
-    occ_filtered <- sf::st_intersection(occ_sf_transformed, filter_region)
+    occ_filtered <- sf::st_intersection(occ_sf, filter_region)
 
     if (nrow(occ_filtered) == 0) {
       message("No records found within the specified polygon")
@@ -302,85 +268,26 @@ download_bndb <- function(scientific_name,
 
     all_occurrences <- as.data.frame(occ_filtered)
     all_occurrences <- all_occurrences[, !names(all_occurrences) %in% c("geometry")]
-    
-    if (crs != "EPSG:4326" && crs != 4326) {
-      all_occurrences$decimalLatitude <- sf::st_coordinates(occ_filtered)[, 2]
-      all_occurrences$decimalLongitude <- sf::st_coordinates(occ_filtered)[, 1]
-    }
 
     message("Filtered to ", nrow(all_occurrences), " records within polygon")
   }
 
-  if (map) {
-    message("Generating map...")
-
-    occ_for_map <- all_occurrences[!is.na(all_occurrences$decimalLatitude) & 
-                                    !is.na(all_occurrences$decimalLongitude), ]
-    
-    if (nrow(occ_for_map) == 0) {
-      message("No records with valid coordinates to display on map")
-    } else {
-      if (!is.null(polygon)) {
-        if (exists("filter_region")) {
-          polygon_map <- filter_region
-        } else {
-          if (is.character(polygon)) {
-            polygon_map <- sf::st_read(polygon, quiet = TRUE)
-          } else {
-            polygon_map <- polygon
-          }
-          if (inherits(polygon_map, "SpatialPolygons")) {
-            polygon_map <- sf::st_as_sf(polygon_map)
-          }
-        }
-        polygon_map <- sf::st_transform(polygon_map, crs = 4326)
-        
-        plot(sf::st_geometry(polygon_map), col = "lightblue", border = "blue", 
-             main = paste("Occurrences of", scientific_name))
-      } else {
-        plot(occ_for_map$decimalLongitude, occ_for_map$decimalLatitude, 
-             type = "p", main = paste("Occurrences of", scientific_name),
-             xlab = "Longitude", ylab = "Latitude")
-      }
-
-      points(occ_for_map$decimalLongitude, occ_for_map$decimalLatitude, 
-             pch = 20, col = "red")
-      
-      message("Displaying map...")
-    }
-  }
-
   if (!is.null(out_file)) {
-    if (output == "shp") {
-      message("Saving as shapefile in CRS: ", crs)
-      
-      occ_sf <- sf::st_as_sf(all_occurrences,
-                            coords = c("decimalLongitude", "decimalLatitude"),
-                            crs = 4326)
-      
-      if (!is.null(crs) && crs != "EPSG:4326" && crs != 4326) {
-        occ_sf <- sf::st_transform(occ_sf, crs = crs)
-      }
-      
-      if (!grepl("\\.shp$", out_file)) {
-        out_file <- paste0(out_file, ".shp")
-      }
-      sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
-      message("Saved to: ", out_file)
-      
-    } else if (output == "csv") {
-      message("Saving as CSV (WGS84 coordinates)")
-      
-      occ_sf <- sf::st_as_sf(all_occurrences,
-                            coords = c("decimalLongitude", "decimalLatitude"),
-                            crs = 4326)
-      all_occurrences <- as.data.frame(occ_sf)
-      all_occurrences <- all_occurrences[, !names(all_occurrences) %in% c("geometry")]
+    if (filetype == "csv") {
+      message("Saving as CSV")
       
       if (!grepl("\\.csv$", out_file)) {
         out_file <- paste0(out_file, ".csv")
       }
       write.csv(all_occurrences, out_file, row.names = FALSE)
+      message("Saved to: ", out_file)
+    } else if (filetype == "excel") {
+      message("Saving as Excel")
+      
+      if (!grepl("\\.xlsx$", out_file)) {
+        out_file <- paste0(out_file, ".xlsx")
+      }
+      openxlsx::write.xlsx(all_occurrences, out_file)
       message("Saved to: ", out_file)
     }
   }

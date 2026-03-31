@@ -10,9 +10,8 @@ download_bndb(
   max_pages = 10,
   delay = 0.5,
   polygon = NULL,
-  crs = NULL,
-  output = "csv",
-  map = FALSE,
+  filt = FALSE,
+  filetype = "csv",
   out_file = NULL
 )
 }
@@ -24,32 +23,11 @@ download_bndb(
 \item{delay}{Delay between requests in seconds (default 0.5)}
 
 \item{polygon}{SpatialPolygonsDataFrame, sf object, or file path to shapefile/GeoJSON.
-If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
-"path/to/polygon.geojson") or an R object (sf/SpatialPolygons).}
+If provided, filters occurrences to within the polygon.}
 
-\item{crs}{Coordinate reference system for output. Required if output = "shp" or map = TRUE.
-Supported CRS codes:
-- "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
-- "EPSG:32716" - WGS 84 / UTM zone 16S
-- "EPSG:32718" - WGS 84 / UTM zone 18S
-- "EPSG:4326" - WGS 84 (latitude/longitude)
-- "EPSG:32617" - WGS 84 / UTM zone 17N
-- "EPSG:32618" - WGS 84 / UTM zone 18N
-- "EPSG:32714" - WGS 84 / UTM zone 14S
-- "EPSG:32715" - WGS 84 / UTM zone 15S
-- "EPSG:32713" - WGS 84 / UTM zone 13S
-- "EPSG:6248" - SIRGAS 2000 / UTM zone 17S
-- "EPSG:6247" - SIRGAS 2000 / UTM zone 16S
-- "EPSG:24877" - PSAD 56 / UTM zone 17S (historical)
-- "EPSG:24878" - PSAD 56 / UTM zone 18S
-- "EPSG:24876" - PSAD 56 / UTM zone 16S
-- "EPSG:4248" - PSAD 56 (geographic)
-- "EPSG:4269" - NAD 27 (geographic)}
+\item{filt}{If TRUE, filters records to valid Ecuador coordinates, removes duplicates and NA (default FALSE).}
 
-\item{output}{Output format: "csv" (default) or "shp". If "shp", crs must be specified.}
-
-\item{map}{If TRUE, display simple plot map (default FALSE).
-Requires crs to be specified.}
+\item{filetype}{Output format: "csv" (default) or "excel".}
 
 \item{out_file}{Output filename without extension (if NULL, returns object in R)}
 }
@@ -64,19 +42,16 @@ Download occurrence data from BNDB Ecuador
 # Download all records for a species (all Ecuador)
 occ <- download_bndb("Cedrela odorata")
 
-# Download records filtered by a shapefile
-occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+# Download with filtering (Ecuador bounds, no duplicates, no NA)
+occ <- download_bndb("Alnus acuminata", filt = TRUE)
+
+# Download filtered by a shapefile
+occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp")
 
 # Save as CSV
-download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-              output = "csv", out_file = "data")
+download_bndb("Cedrela odorata", filetype = "csv", out_file = "data")
 
-# Save as shapefile in UTM (crs required)
-download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
-              output = "shp", out_file = "data", crs = "EPSG:32717")
-
-# Display interactive map (crs required)
-download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
-              map = TRUE, crs = "EPSG:4326")
+# Save as Excel
+download_bndb("Cedrela odorata", filetype = "excel", out_file = "data")
 }
 }
