@@ -9,7 +9,7 @@ Encoding: UTF-8
 RoxygenNote: 7.3.3
 Imports: rvest, sf, magrittr
 NeedsCompilation: no
-Packaged: 2026-03-31 19:36:37 UTC; wally
+Packaged: 2026-03-31 20:09:22 UTC; wally
 Author: Erick Angamarca [aut, cre]
 Maintainer: Erick Angamarca <erick.angamarca97@gmail.com>
-Built: R 4.5.0; ; 2026-03-31 19:36:39 UTC; unix
+Built: R 4.5.0; ; 2026-03-31 20:09:24 UTC; unix

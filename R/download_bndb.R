@@ -7,10 +7,7 @@
 #' @param polygon SpatialPolygonsDataFrame, sf object, or file path to shapefile/GeoJSON.
 #'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
 #'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
-#' @param file Path to a CSV file (Symbiota export with Darwin Core columns).
-#'   If provided, reads data from file instead of downloading from BNDB.
 #' @param crs Coordinate reference system for output. Required if output = "shp" or map = TRUE.
-#'   If NULL (default), returns WGS84 coordinates. If specified with output = "shp", exports in that CRS.
 #'   Supported CRS codes:
 #'   - "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
 #'   - "EPSG:32716" - WGS 84 / UTM zone 16S
@@ -66,8 +63,7 @@ download_bndb <- function(scientific_name,
                           crs = NULL,
                           output = "csv",
                           map = FALSE,
-                          out_file = NULL,
-                          file = NULL) {
+                          out_file = NULL) {
 
   if (output == "shp" && is.null(crs)) {
     stop("CRS must be specified when output = 'shp'. Use crs = 'EPSG:32717' or crs = 'EPSG:4326'")
@@ -81,24 +77,7 @@ download_bndb <- function(scientific_name,
     crs <- "EPSG:4326"
   }
 
-  if (!is.null(file)) {
-    message("Reading from file: ", file)
-    
-    if (!file.exists(file)) {
-      stop("File not found: ", file)
-    }
-    
-    all_occurrences <- utils::read.csv(file, header = TRUE, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
-    
-    if (!"decimalLatitude" %in% names(all_occurrences) || !"decimalLongitude" %in% names(all_occurrences)) {
-      stop("File must contain 'decimalLatitude' and 'decimalLongitude' columns")
-    }
-    
-    all_occurrences <- all_occurrences[!is.na(all_occurrences$decimalLatitude) & !is.na(all_occurrences$decimalLongitude), ]
-    
-    message("Loaded ", nrow(all_occurrences), " records with coordinates from file")
-    
-  } else {
+  message("Starting BNDB download for: ", scientific_name)
 
   all_occurrences <- data.frame()
 
@@ -282,8 +261,6 @@ download_bndb <- function(scientific_name,
   if (nrow(all_occurrences) == 0) {
     message("No records found.")
     return(NULL)
-  }
-
   }
 
   if (!is.null(polygon)) {

@@ -60,7 +60,7 @@ download_bndb <- function(scientific_name,
                           max_pages = 10,
                           delay = 0.5,
                           polygon = NULL,
-                          crs = "EPSG:32717",
+                          crs = NULL,
                           output = "csv",
                           map = FALSE,
                           out_file = NULL) {
@@ -291,9 +291,9 @@ download_bndb <- function(scientific_name,
                           coords = c("decimalLongitude", "decimalLatitude"),
                           crs = 4326)
 
-    occ_sf <- sf::st_transform(occ_sf, crs = crs)
+    occ_sf_transformed <- sf::st_transform(occ_sf, crs = crs)
 
-    occ_filtered <- sf::st_intersection(occ_sf, filter_region)
+    occ_filtered <- sf::st_intersection(occ_sf_transformed, filter_region)
 
     if (nrow(occ_filtered) == 0) {
       message("No records found within the specified polygon")
@@ -302,38 +302,13 @@ download_bndb <- function(scientific_name,
 
     all_occurrences <- as.data.frame(occ_filtered)
     all_occurrences <- all_occurrences[, !names(all_occurrences) %in% c("geometry")]
-    all_occurrences$decimalLatitude <- sf::st_coordinates(occ_filtered)[, 2]
-    all_occurrences$decimalLongitude <- sf::st_coordinates(occ_filtered)[, 1]
+    
+    if (crs != "EPSG:4326" && crs != 4326) {
+      all_occurrences$decimalLatitude <- sf::st_coordinates(occ_filtered)[, 2]
+      all_occurrences$decimalLongitude <- sf::st_coordinates(occ_filtered)[, 1]
+    }
 
     message("Filtered to ", nrow(all_occurrences), " records within polygon")
-  }
-
-  if (!is.null(crs)) {
-    occ_sf <- sf::st_as_sf(all_occurrences,
-                          coords = c("decimalLongitude", "decimalLatitude"),
-                          crs = 4326)
-    occ_sf <- sf::st_transform(occ_sf, crs = crs)
-    all_occurrences$decimalLatitude <- sf::st_coordinates(occ_sf)[, 2]
-    all_occurrences$decimalLongitude <- sf::st_coordinates(occ_sf)[, 1]
-  }
-
-  if (!is.null(out_file)) {
-    if (output == "shp") {
-      occ_sf <- sf::st_as_sf(all_occurrences,
-                            coords = c("decimalLongitude", "decimalLatitude"),
-                            crs = crs)
-      if (!grepl("\\.shp$", out_file)) {
-        out_file <- paste0(out_file, ".shp")
-      }
-      sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
-      message("Saved to: ", out_file)
-    } else if (output == "csv") {
-      if (!grepl("\\.csv$", out_file)) {
-        out_file <- paste0(out_file, ".csv")
-      }
-      write.csv(all_occurrences, out_file, row.names = FALSE)
-      message("Saved to: ", out_file)
-    }
   }
 
   if (map) {
@@ -345,10 +320,6 @@ download_bndb <- function(scientific_name,
     if (nrow(occ_for_map) == 0) {
       message("No records with valid coordinates to display on map")
     } else {
-      occ_sf <- sf::st_as_sf(occ_for_map,
-                            coords = c("decimalLongitude", "decimalLatitude"),
-                            crs = 4326)
-
       if (!is.null(polygon)) {
         if (exists("filter_region")) {
           polygon_map <- filter_region
@@ -376,6 +347,41 @@ download_bndb <- function(scientific_name,
              pch = 20, col = "red")
       
       message("Displaying map...")
+    }
+  }
+
+  if (!is.null(out_file)) {
+    if (output == "shp") {
+      message("Saving as shapefile in CRS: ", crs)
+      
+      occ_sf <- sf::st_as_sf(all_occurrences,
+                            coords = c("decimalLongitude", "decimalLatitude"),
+                            crs = 4326)
+      
+      if (!is.null(crs) && crs != "EPSG:4326" && crs != 4326) {
+        occ_sf <- sf::st_transform(occ_sf, crs = crs)
+      }
+      
+      if (!grepl("\\.shp$", out_file)) {
+        out_file <- paste0(out_file, ".shp")
+      }
+      sf::st_write(occ_sf, out_file, delete_dsn = TRUE)
+      message("Saved to: ", out_file)
+      
+    } else if (output == "csv") {
+      message("Saving as CSV (WGS84 coordinates)")
+      
+      occ_sf <- sf::st_as_sf(all_occurrences,
+                            coords = c("decimalLongitude", "decimalLatitude"),
+                            crs = 4326)
+      all_occurrences <- as.data.frame(occ_sf)
+      all_occurrences <- all_occurrences[, !names(all_occurrences) %in% c("geometry")]
+      
+      if (!grepl("\\.csv$", out_file)) {
+        out_file <- paste0(out_file, ".csv")
+      }
+      write.csv(all_occurrences, out_file, row.names = FALSE)
+      message("Saved to: ", out_file)
     }
   }
 

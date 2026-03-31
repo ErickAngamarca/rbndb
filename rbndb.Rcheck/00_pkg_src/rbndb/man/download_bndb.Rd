@@ -10,7 +10,7 @@ download_bndb(
   max_pages = 10,
   delay = 0.5,
   polygon = NULL,
-  crs = "EPSG:32717",
+  crs = NULL,
   output = "csv",
   map = FALSE,
   out_file = NULL

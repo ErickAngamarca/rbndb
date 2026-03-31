@@ -13,8 +13,7 @@ download_bndb(
   crs = NULL,
   output = "csv",
   map = FALSE,
-  out_file = NULL,
-  file = NULL
+  out_file = NULL
 )
 }
 \arguments{
@@ -53,9 +52,6 @@ Supported CRS codes:
 Requires crs to be specified.}
 
 \item{out_file}{Output filename without extension (if NULL, returns object in R)}
-
-\item{file}{Path to a CSV file (Symbiota export with Darwin Core columns).
-If provided, reads data from file instead of downloading from BNDB.}
 }
 \value{
 Data frame with occurrence data
