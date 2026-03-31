@@ -17,9 +17,9 @@ download_bndb(
 )
 }
 \arguments{
-\item{scientific_name}{Scientific name of the species}
+\item{scientific_name}{Scientific name of the species (e.g., "Cedrela odorata", "Alnus acuminata", "Vismia baccifera")}
 
-\item{max_pages}{Maximum number of pages to download (default 10)}
+\item{max_pages}{Maximum number of pages to download (default 10, range: 1-100)}
 
 \item{delay}{Delay between requests in seconds (default 0.5)}
 
@@ -27,12 +27,26 @@ download_bndb(
 If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
 "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).}
 
-\item{crs}{Coordinate reference system for output (default "EPSG:32717").
-Required if output = "shp" or map = TRUE. Common options:
-- "EPSG:32717" - UTM zone 17S (default, appropriate for Ecuador)
-- "EPSG:4326" - WGS84 (latitude/longitude)}
+\item{crs}{Coordinate reference system for output. Required if output = "shp" or map = TRUE.
+Supported CRS codes:
+- "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
+- "EPSG:32716" - WGS 84 / UTM zone 16S
+- "EPSG:32718" - WGS 84 / UTM zone 18S
+- "EPSG:4326" - WGS 84 (latitude/longitude)
+- "EPSG:32617" - WGS 84 / UTM zone 17N
+- "EPSG:32618" - WGS 84 / UTM zone 18N
+- "EPSG:32714" - WGS 84 / UTM zone 14S
+- "EPSG:32715" - WGS 84 / UTM zone 15S
+- "EPSG:32713" - WGS 84 / UTM zone 13S
+- "EPSG:6248" - SIRGAS 2000 / UTM zone 17S
+- "EPSG:6247" - SIRGAS 2000 / UTM zone 16S
+- "EPSG:24877" - PSAD 56 / UTM zone 17S (historical)
+- "EPSG:24878" - PSAD 56 / UTM zone 18S
+- "EPSG:24876" - PSAD 56 / UTM zone 16S
+- "EPSG:4248" - PSAD 56 (geographic)
+- "EPSG:4269" - NAD 27 (geographic)}
 
-\item{output}{Output format: "csv" or "shp" (default "csv")}
+\item{output}{Output format: "csv" (default) or "shp". If "shp", crs must be specified.}
 
 \item{map}{If TRUE, display interactive map with leaflet (default FALSE).
 Requires crs to be specified.}
@@ -48,21 +62,21 @@ Download occurrence data from BNDB Ecuador
 \examples{
 \dontrun{
 # Download all records for a species (all Ecuador)
-occ <- download_bndb("Vismia baccifera")
+occ <- download_bndb("Cedrela odorata")
 
-# Download records filtered by a shapefile (WGS84)
-occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+# Download records filtered by a shapefile
+occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
 
 # Save as CSV
-download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
               output = "csv", out_file = "data")
 
-# Save as shapefile in UTM
-download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+# Save as shapefile in UTM (crs required)
+download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
               output = "shp", out_file = "data", crs = "EPSG:32717")
 
-# Display interactive map (requires crs)
-download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+# Display interactive map (crs required)
+download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
               map = TRUE, crs = "EPSG:4326")
 }
 }

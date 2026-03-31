@@ -4,11 +4,10 @@ Version: 0.1.0
 Authors@R: person("Erick", "Angamarca", email = "erick.angamarca97@gmail.com", role = c("aut", "cre"))
 Description: Download occurrence data from the Banco Nacional de Datos de 
     Biodiversidad (BNDB) of Ecuador using web scraping.
-License: MIT
+License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 Imports: 
-    httr,
     rvest,
     sf,
     leaflet,

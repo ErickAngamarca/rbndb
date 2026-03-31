@@ -1,17 +1,31 @@
 #' Download occurrence data from BNDB Ecuador
 #'
 #' @aliases rbndb
-#' @param scientific_name Scientific name of the species
-#' @param max_pages Maximum number of pages to download (default 10)
+#' @param scientific_name Scientific name of the species (e.g., "Cedrela odorata", "Alnus acuminata", "Vismia baccifera")
+#' @param max_pages Maximum number of pages to download (default 10, range: 1-100)
 #' @param delay Delay between requests in seconds (default 0.5)
 #' @param polygon SpatialPolygonsDataFrame, sf object, or file path to shapefile/GeoJSON.
 #'   If NULL, downloads all Ecuador. Can be a file path (e.g., "path/to/polygon.shp" or 
 #'   "path/to/polygon.geojson") or an R object (sf/SpatialPolygons).
-#' @param crs Coordinate reference system for output (default "EPSG:32717").
-#'   Required if output = "shp" or map = TRUE. Common options:
-#'   - "EPSG:32717" - UTM zone 17S (default, appropriate for Ecuador)
-#'   - "EPSG:4326" - WGS84 (latitude/longitude)
-#' @param output Output format: "csv" or "shp" (default "csv")
+#' @param crs Coordinate reference system for output. Required if output = "shp" or map = TRUE.
+#'   Supported CRS codes:
+#'   - "EPSG:32717" - WGS 84 / UTM zone 17S (DEFAULT, for Ecuador)
+#'   - "EPSG:32716" - WGS 84 / UTM zone 16S
+#'   - "EPSG:32718" - WGS 84 / UTM zone 18S
+#'   - "EPSG:4326" - WGS 84 (latitude/longitude)
+#'   - "EPSG:32617" - WGS 84 / UTM zone 17N
+#'   - "EPSG:32618" - WGS 84 / UTM zone 18N
+#'   - "EPSG:32714" - WGS 84 / UTM zone 14S
+#'   - "EPSG:32715" - WGS 84 / UTM zone 15S
+#'   - "EPSG:32713" - WGS 84 / UTM zone 13S
+#'   - "EPSG:6248" - SIRGAS 2000 / UTM zone 17S
+#'   - "EPSG:6247" - SIRGAS 2000 / UTM zone 16S
+#'   - "EPSG:24877" - PSAD 56 / UTM zone 17S (historical)
+#'   - "EPSG:24878" - PSAD 56 / UTM zone 18S
+#'   - "EPSG:24876" - PSAD 56 / UTM zone 16S
+#'   - "EPSG:4248" - PSAD 56 (geographic)
+#'   - "EPSG:4269" - NAD 27 (geographic)
+#' @param output Output format: "csv" (default) or "shp". If "shp", crs must be specified.
 #' @param map If TRUE, display interactive map with leaflet (default FALSE).
 #'   Requires crs to be specified.
 #' @param out_file Output filename without extension (if NULL, returns object in R)
@@ -25,21 +39,21 @@
 #' @examples
 #' \dontrun{
 #' # Download all records for a species (all Ecuador)
-#' occ <- download_bndb("Vismia baccifera")
+#' occ <- download_bndb("Cedrela odorata")
 #'
-#' # Download records filtered by a shapefile (WGS84)
-#' occ <- download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
+#' # Download records filtered by a shapefile
+#' occ <- download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", crs = "EPSG:4326")
 #'
 #' # Save as CSV
-#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#' download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
 #'               output = "csv", out_file = "data")
 #'
-#' # Save as shapefile in UTM
-#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#' # Save as shapefile in UTM (crs required)
+#' download_bndb("Cedrela odorata", polygon = "path/to/polygon.shp", 
 #'               output = "shp", out_file = "data", crs = "EPSG:32717")
 #'
-#' # Display interactive map (requires crs)
-#' download_bndb("Vismia baccifera", polygon = "path/to/polygon.shp", 
+#' # Display interactive map (crs required)
+#' download_bndb("Alnus acuminata", polygon = "path/to/polygon.shp", 
 #'               map = TRUE, crs = "EPSG:4326")
 #' }
 
@@ -107,18 +121,84 @@ download_bndb <- function(scientific_name,
           lat <- NA
           lon <- NA
 
-          coord_pattern <- "-[0-9]+\\.[0-9]+.*WGS"
-          matches <- gregexpr(coord_pattern, body_text, perl = TRUE)
-          regm <- matches[[1]]
-
-          if (regm[1] > 0) {
-            txt <- substr(body_text, regm[1], regm[1] + 30)
-            nums <- strsplit(txt, '[^0-9.-]')[[1]]
-            nums <- nums[nchar(nums) > 0]
-            nums <- nums[!is.na(suppressWarnings(as.numeric(nums)))]
-            if (length(nums) >= 2) {
-              lat <- as.numeric(nums[1])
-              lon <- as.numeric(nums[2])
+          coord_line <- NA
+          if (grepl("Coordinates:", body_text)) {
+            coord_start <- regexpr("Coordinates:", body_text)[1]
+            coord_end <- regexpr("\n", substring(body_text, coord_start + 1))[1] + coord_start
+            coord_line <- substring(body_text, coord_start + 12, coord_end - 1)
+          }
+          
+          if (!is.na(coord_line) && coord_line != "") {
+            coord_line_clean <- gsub("[\u00b0\u00b4'\u2032\u2033]", " ", coord_line)
+            coord_line_clean <- gsub("\\s+", " ", coord_line_clean)
+            coord_line_clean <- gsub(";", " ", coord_line_clean)
+            coord_line_clean <- gsub("([NSns])", " \\1", coord_line_clean)
+            coord_line_clean <- gsub("([EWew])", " \\1", coord_line_clean)
+            coord_line_clean <- trimws(coord_line_clean)
+            
+            lat_lon <- c(NA, NA)
+            
+            lat_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([NSns])", coord_line_clean))
+            lon_dms <- regmatches(coord_line_clean, regexec("([0-9]+)\\s+([0-9]+)\\s+([0-9.]+)\\s+([EWew])", coord_line_clean))
+            
+            if (length(lat_dms[[1]]) > 1) {
+              lat_deg <- as.numeric(lat_dms[[1]][2])
+              lat_min <- as.numeric(lat_dms[[1]][3])
+              lat_sec <- as.numeric(lat_dms[[1]][4])
+              lat_dir <- toupper(lat_dms[[1]][5])
+              lat <- lat_deg + lat_min/60 + lat_sec/3600
+              if (lat_dir == "S") lat <- -lat
+            }
+            
+            if (length(lon_dms[[1]]) > 1) {
+              lon_deg <- as.numeric(lon_dms[[1]][2])
+              lon_min <- as.numeric(lon_dms[[1]][3])
+              lon_sec <- as.numeric(lon_dms[[1]][4])
+              lon_dir <- toupper(lon_dms[[1]][5])
+              lon <- lon_deg + lon_min/60 + lon_sec/3600
+              if (lon_dir == "W") lon <- -lon
+            }
+            
+            if (length(lon_dms[[1]]) > 1) {
+              lon_deg <- as.numeric(lon_dms[[1]][2])
+              lon_min <- as.numeric(lon_dms[[1]][3])
+              lon_sec <- as.numeric(lon_dms[[1]][4])
+              lon_dir <- lon_dms[[1]][5]
+              lon <- lon_deg + lon_min/60 + lon_sec/3600
+              if (lon_dir == "W") lon <- -lon
+            }
+            
+            if (is.na(lat) || is.na(lon)) {
+              nums <- strsplit(coord_line, '[^0-9.-]')[[1]]
+              nums <- nums[nchar(nums) > 0]
+              nums <- nums[!is.na(suppressWarnings(as.numeric(nums)))]
+              if (length(nums) >= 2) {
+                lat <- as.numeric(nums[1])
+                lon <- as.numeric(nums[2])
+              }
+            }
+          }
+          
+          if (is.na(lat) || is.na(lon)) {
+            coord_pattern <- "([0-9]+\\.[0-9]+)[\\u00b0]?\\s*[NS]?.*?\\s*([0-9]+\\.[0-9]+)[\\u00b0]?\\s*[EW]?"
+            matches <- gregexpr(coord_pattern, body_text, perl = TRUE)
+            regm <- matches[[1]]
+            if (regm[1] > 0) {
+              txt <- substr(body_text, regm[1], attr(regm, "match.length")[1] + regm[1] - 1)
+              nums <- strsplit(txt, '[^0-9.-]')[[1]]
+              nums <- nums[nchar(nums) > 0]
+              nums <- nums[!is.na(suppressWarnings(as.numeric(nums)))]
+              if (length(nums) >= 2) {
+                lat_val <- as.numeric(nums[1])
+                lon_val <- as.numeric(nums[2])
+                if (lat_val > -5 && lat_val < 2 && lon_val > -82 && lon_val < -75) {
+                  lat <- lat_val
+                  lon <- lon_val
+                } else if (lon_val > -5 && lon_val < 2 && lat_val > -82 && lat_val < -75) {
+                  lat <- lon_val
+                  lon <- lat_val
+                }
+              }
             }
           }
 
@@ -167,7 +247,7 @@ download_bndb <- function(scientific_name,
 
     }, error = function(e) {
       message("Error on page ", page, ": ", e$message)
-      break
+      return(all_occurrences)
     })
   }
 
@@ -260,13 +340,15 @@ download_bndb <- function(scientific_name,
   if (map) {
     message("Generating map...")
 
-    if (is.null(crs)) {
-      crs <- "EPSG:4326"
-    }
-
-    occ_sf <- sf::st_as_sf(all_occurrences,
+    occ_for_map <- all_occurrences[!is.na(all_occurrences$decimalLatitude) & 
+                                    !is.na(all_occurrences$decimalLongitude), ]
+    
+    if (nrow(occ_for_map) == 0) {
+      message("No records with valid coordinates to display on map")
+    } else {
+    occ_sf <- sf::st_as_sf(occ_for_map,
                           coords = c("decimalLongitude", "decimalLatitude"),
-                          crs = crs)
+                          crs = 4326)
 
     if (!is.null(polygon)) {
       if (exists("filter_region")) {
@@ -280,7 +362,7 @@ download_bndb <- function(scientific_name,
         if (inherits(polygon_map, "SpatialPolygons")) {
           polygon_map <- sf::st_as_sf(polygon_map)
         }
-        polygon_map <- sf::st_transform(polygon_map, crs = crs)
+        polygon_map <- sf::st_transform(polygon_map, crs = 4326)
       }
       
       leaflet_map <- leaflet::leaflet() %>%
@@ -297,6 +379,7 @@ download_bndb <- function(scientific_name,
 
     message("Displaying map...")
     print(leaflet_map)
+    }
   }
 
   message("Done!")

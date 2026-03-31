@@ -147,5 +147,4 @@ Erick Angamarca (erick.angamarca97@gmail.com)
 ## References
 
 - Banco Nacional de Datos de Biodiversidad (BNDB): https://bndb.sisbioecuador.bio
-- GADM: https://gadm.org
 - EPSG: https://epsg.org
